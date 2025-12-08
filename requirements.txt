@@ -1,0 +1,22 @@
+# Core Dependencies
+torch>=2.0.0
+transformers>=4.30.0
+numpy>=1.24.0
+
+# RL Training
+trl>=0.7.0
+accelerate>=0.20.0
+
+# API and Deployment
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+datasets>=2.14.0
+
+# Testing
+pytest>=7.4.0
+requests>=2.31.0
