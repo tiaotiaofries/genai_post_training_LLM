@@ -1,17 +1,6 @@
 # Assignment 5: Post-training an LLM using Reinforcement Learning
 
-**Author**: Sze Ning  
-**Course**: Applied Gen AI  
-**Due**: Sunday 11:59pm  
-**Repository**: https://github.com/tiaotiaofries/genai_post_training_LLM
-
 ## Overview
-
-This project implements a **two-step approach** to train GPT-2 for formatted Q&A:
-
-1. **Step 1: Supervised Fine-tuning** - Fine-tune GPT-2 on SQuAD dataset to learn Q&A
-2. **Step 2: RL Post-training** - Apply Reinforcement Learning to enforce specific format
-
 The final model generates responses in this format:
 ```
 Question: [user's question]
@@ -54,7 +43,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Step 1: Fine-tune on SQuAD (First Time Only)
+### Step 1: Fine-tune on SQuAD
 ```bash
 python finetune_squad.py --epochs 3 --batch_size 4 --max_samples 10000
 ```
@@ -63,7 +52,6 @@ This will:
 - Download SQuAD dataset from HuggingFace
 - Fine-tune GPT-2 on Q&A pairs
 - Save model to `./models/gpt2_squad_finetuned`
-- Takes ~30-60 minutes on CPU
 
 ### Step 2: Train with RL
 ```bash
@@ -74,7 +62,6 @@ This will:
 - Load the SQuAD fine-tuned model
 - Apply policy gradient RL
 - Save RL-trained model to `./models/rl_trained_gpt2`
-- Takes ~20-40 minutes on CPU
 
 ### Step 3: Run the API Server
 ```bash
@@ -129,23 +116,3 @@ genai_rl_post_training/
 │   └── rl_trained_gpt2/         # After Step 2
 └── tests/                 # Unit tests
 ```
-
-## RL Concepts Applied
-
-- **States**: GPT-2 hidden states during generation
-- **Actions**: Token selections at each timestep
-- **Policy**: GPT-2's probability distribution over vocabulary
-- **Reward**: Format compliance score (+1/-1)
-- **Policy Gradient**: Update policy to maximize expected reward
-
-## Grading Criteria
-- ✅ GitHub commit (10 pts)
-- ✅ Docker + FastAPI (20 pts)
-- ✅ API queries work (20 pts)
-- ✅ Code organization (20 pts)
-- ✅ Theoretical questions (30 pts)
-
-## References
-- Module 10: RL Basics (Grid World)
-- Module 11: RL for Language Models (Word Chains)
-- TRL Library: https://github.com/huggingface/trl
