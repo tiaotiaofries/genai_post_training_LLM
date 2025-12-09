@@ -321,9 +321,10 @@ if __name__ == "__main__":
     ]
     
     # Initialize trainer
+    # Use SQuAD fine-tuned model as base (run finetune_squad.py first)
     trainer = RLTrainer(
         model_name="openai-community/gpt2",
-        base_model_path=None,  # Set to fine-tuned model path if available
+        base_model_path="./models/gpt2_squad_finetuned",  # SQuAD fine-tuned model
         learning_rate=1e-5
     )
     

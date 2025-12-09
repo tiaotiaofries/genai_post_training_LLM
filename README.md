@@ -7,7 +7,12 @@
 
 ## Overview
 
-This project implements Reinforcement Learning (RL) to post-train GPT-2 to generate responses in a specific format:
+This project implements a **two-step approach** to train GPT-2 for formatted Q&A:
+
+1. **Step 1: Supervised Fine-tuning** - Fine-tune GPT-2 on SQuAD dataset to learn Q&A
+2. **Step 2: RL Post-training** - Apply Reinforcement Learning to enforce specific format
+
+The final model generates responses in this format:
 ```
 Question: [user's question]
 Answer: [model's response]
@@ -15,9 +20,14 @@ Answer: [model's response]
 
 ## Approach
 
-### Base Model
-- **Model**: GPT-2 fine-tuned on Nectar QA dataset (from Module 9)
-- **Location**: `/Users/szening/sps_genai/models/gpt2_finetuned`
+### Step 1: Fine-tuning on SQuAD Dataset
+- **Dataset**: Stanford Question Answering Dataset (SQuAD)
+- **Model**: GPT-2 base model
+- **Training**: Supervised learning on Q&A pairs formatted as "Question: ...\nAnswer: ..."
+- **Output**: `./models/gpt2_squad_finetuned`
+
+### Step 2: RL Post-training
+- **Base Model**: SQuAD fine-tuned GPT-2 (from Step 1)
 
 ### RL Training Strategy
 - **Algorithm**: Policy Gradient / PPO (Proximal Policy Optimization)
@@ -29,11 +39,12 @@ Answer: [model's response]
 
 ### Key Components
 
-1. **`reward_function.py`**: Evaluates if generated text follows required format
-2. **`rl_trainer.py`**: Implements policy gradient training loop
-3. **`model.py`**: Wraps GPT-2 with RL-trained policy head
-4. **`main.py`**: FastAPI server for inference
-5. **`Dockerfile`**: Containerization for deployment
+1. **`finetune_squad.py`**: Supervised fine-tuning on SQuAD dataset
+2. **`reward_function.py`**: Evaluates if generated text follows required format
+3. **`rl_trainer.py`**: Implements policy gradient training loop
+4. **`model.py`**: Wraps GPT-2 with RL-trained policy head
+5. **`main.py`**: FastAPI server for inference
+6. **`Dockerfile`**: Containerization for deployment
 
 ## Installation
 
@@ -43,7 +54,29 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Train the Model
+### Step 1: Fine-tune on SQuAD (First Time Only)
+```bash
+python finetune_squad.py --epochs 3 --batch_size 4 --max_samples 10000
+```
+
+This will:
+- Download SQuAD dataset from HuggingFace
+- Fine-tune GPT-2 on Q&A pairs
+- Save model to `./models/gpt2_squad_finetuned`
+- Takes ~30-60 minutes on CPU
+
+### Step 2: Train with RL
+```bash
+python rl_trainer.py --episodes 1000 --batch_size 30 --lr 1e-5
+```
+
+This will:
+- Load the SQuAD fine-tuned model
+- Apply policy gradient RL
+- Save RL-trained model to `./models/rl_trained_gpt2`
+- Takes ~20-40 minutes on CPU
+
+### Step 3: Run the API Server
 ```bash
 python rl_trainer.py --episodes 1000 --batch_size 30 --lr 1e-5
 ```
@@ -86,12 +119,15 @@ genai_rl_post_training/
 ├── requirements.txt
 ├── Dockerfile
 ├── .gitignore
-├── reward_function.py    # Format checking reward
-├── rl_trainer.py         # RL training implementation
-├── model.py              # RL-trained GPT-2 wrapper
-├── main.py               # FastAPI application
-├── models/               # Saved RL checkpoints
-└── tests/                # Unit tests
+├── finetune_squad.py      # Step 1: SQuAD fine-tuning
+├── reward_function.py     # Format checking reward
+├── rl_trainer.py          # Step 2: RL training
+├── model.py               # RL-trained GPT-2 wrapper
+├── main.py                # FastAPI application
+├── models/                # Saved checkpoints
+│   ├── gpt2_squad_finetuned/    # After Step 1
+│   └── rl_trained_gpt2/         # After Step 2
+└── tests/                 # Unit tests
 ```
 
 ## RL Concepts Applied
