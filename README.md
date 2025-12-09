@@ -1,9 +1,6 @@
 # Assignment 5: Post-training an LLM using Reinforcement Learning
 
 ## Overview
-This project implements a two-step approach to train GPT-2 for formatted Q&A generation:
-1. **Fine-tuning** on SQuAD dataset (supervised learning)
-2. **RL Post-training** for format compliance (reinforcement learning)
 
 The final model generates responses in this format:
 ```
@@ -54,7 +51,6 @@ This will:
 - Download SQuAD dataset from HuggingFace
 - Fine-tune GPT-2 on Q&A pairs
 - Save model to `./models/gpt2_squad_finetuned/`
-- **Time**: 1-2 hours on CPU, 20-30 minutes on GPU/MPS
 
 ### Step 2: Train with RL
 ```bash
@@ -65,7 +61,6 @@ This will:
 - Load the SQuAD fine-tuned model
 - Apply policy gradient RL for format compliance
 - Save RL-trained model to `./models/rl_trained_gpt2/`
-- **Time**: 15-20 minutes on MPS, longer on CPU
 
 ### Step 3: Run the API Server
 ```bash
@@ -135,14 +130,6 @@ genai_rl_post_training/
     └── rl_trained_gpt2/       # After Step 2 (not in repo, ~475MB)
 ```
 
-## Key Features
-
-- ✅ **Two-step training**: SQuAD fine-tuning + RL post-training
-- ✅ **Format compliance**: Enforced through RL reward function
-- ✅ **GPU acceleration**: Supports CUDA and MPS (Apple Silicon)
-- ✅ **FastAPI integration**: RESTful API with auto-documentation
-- ✅ **Docker deployment**: Containerized for easy deployment
-- ✅ **Modular design**: Separate components for each training step
 
 ## Notes
 
@@ -150,16 +137,3 @@ genai_rl_post_training/
 - See `models/README.md` for instructions to regenerate models locally
 - Training was tested on Apple Silicon (M-series) with MPS acceleration
 - For best results, use GPU/MPS acceleration for faster training
-
-## Assignment Requirements Met
-
-1. ✅ Fine-tuning on SQuAD dataset (Step 1)
-2. ✅ RL post-training with policy gradient (Step 2)
-3. ✅ Reward function for format compliance
-4. ✅ FastAPI integration for inference
-5. ✅ Docker deployment configuration
-6. ✅ Complete documentation
-
-## License
-
-MIT License - Educational project for UW Applied GenAI course.
