@@ -1,6 +1,10 @@
 # Assignment 5: Post-training an LLM using Reinforcement Learning
 
 ## Overview
+This project implements a two-step approach to train GPT-2 for formatted Q&A generation:
+1. **Fine-tuning** on SQuAD dataset (supervised learning)
+2. **RL Post-training** for format compliance (reinforcement learning)
+
 The final model generates responses in this format:
 ```
 Question: [user's question]
@@ -11,35 +15,33 @@ Answer: [model's response]
 
 ### Step 1: Fine-tuning on SQuAD Dataset
 - **Dataset**: Stanford Question Answering Dataset (SQuAD)
-- **Model**: GPT-2 base model
+- **Model**: GPT-2 base model (openai-community/gpt2)
 - **Training**: Supervised learning on Q&A pairs formatted as "Question: ...\nAnswer: ..."
-- **Output**: `./models/gpt2_squad_finetuned`
+- **Output**: `./models/gpt2_squad_finetuned/` (~950MB)
 
 ### Step 2: RL Post-training
 - **Base Model**: SQuAD fine-tuned GPT-2 (from Step 1)
-
-### RL Training Strategy
-- **Algorithm**: Policy Gradient / PPO (Proximal Policy Optimization)
+- **Algorithm**: Policy Gradient (REINFORCE)
 - **Reward Function**: 
   - `+1` if output follows format: `"Question: ...\nAnswer: ..."`
   - `-1` if output does not follow format
-- **Training Episodes**: 500-1000 episodes
-- **Learning Rate**: 1e-5 (fine-tuning rate for pre-trained LLM)
-
-### Key Components
-
-1. **`finetune_squad.py`**: Supervised fine-tuning on SQuAD dataset
-2. **`reward_function.py`**: Evaluates if generated text follows required format
-3. **`rl_trainer.py`**: Implements policy gradient training loop
-4. **`model.py`**: Wraps GPT-2 with RL-trained policy head
-5. **`main.py`**: FastAPI server for inference
-6. **`Dockerfile`**: Containerization for deployment
+  - Shaped rewards for partial credit
+- **Training**: 30-50 epochs with batch size 5
+- **Learning Rate**: 1e-5
+- **Output**: `./models/rl_trained_gpt2/` (~475MB)
 
 ## Installation
 
 ```bash
 pip install -r requirements.txt
 ```
+
+**Requirements:**
+- Python 3.10+
+- PyTorch 2.0+
+- transformers 4.30+
+- datasets 2.14+
+- FastAPI, uvicorn
 
 ## Usage
 
@@ -51,29 +53,35 @@ python finetune_squad.py --epochs 3 --batch_size 4 --max_samples 10000
 This will:
 - Download SQuAD dataset from HuggingFace
 - Fine-tune GPT-2 on Q&A pairs
-- Save model to `./models/gpt2_squad_finetuned`
+- Save model to `./models/gpt2_squad_finetuned/`
+- **Time**: 1-2 hours on CPU, 20-30 minutes on GPU/MPS
 
 ### Step 2: Train with RL
 ```bash
-python rl_trainer.py --episodes 1000 --batch_size 30 --lr 1e-5
+python rl_trainer.py
 ```
 
 This will:
 - Load the SQuAD fine-tuned model
-- Apply policy gradient RL
-- Save RL-trained model to `./models/rl_trained_gpt2`
+- Apply policy gradient RL for format compliance
+- Save RL-trained model to `./models/rl_trained_gpt2/`
+- **Time**: 15-20 minutes on MPS, longer on CPU
 
 ### Step 3: Run the API Server
 ```bash
-python rl_trainer.py --episodes 1000 --batch_size 30 --lr 1e-5
-```
-
-### Run the API Server
-```bash
+python main.py
+# Or with uvicorn:
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
+Visit http://localhost:8000/docs for interactive API documentation.
+
 ### Docker Deployment
+```bash
+docker-compose up --build
+```
+
+Or manually:
 ```bash
 docker build -t genai-rl-post-training .
 docker run -p 8000:8000 genai-rl-post-training
@@ -81,38 +89,77 @@ docker run -p 8000:8000 genai-rl-post-training
 
 ## API Endpoints
 
-### POST `/generate`
-Generate a formatted response to a user question.
+### GET `/`
+Root endpoint with API information.
+
+### POST `/generate_qa`
+Generate a formatted Q&A response.
 
 **Request Body**:
 ```json
 {
   "question": "What is machine learning?",
-  "max_length": 100
+  "max_length": 100,
+  "temperature": 0.7
 }
 ```
 
 **Response**:
 ```json
 {
-  "response": "Question: What is machine learning?\nAnswer: Machine learning is a subset of artificial intelligence..."
+  "question": "What is machine learning?",
+  "formatted_response": "Question: What is machine learning?\nAnswer: Machine learning is...",
+  "answer_only": "Machine learning is..."
 }
 ```
+
+### GET `/health`
+Health check endpoint.
 
 ## Project Structure
 ```
 genai_rl_post_training/
-├── README.md
-├── requirements.txt
-├── Dockerfile
-├── .gitignore
-├── finetune_squad.py      # Step 1: SQuAD fine-tuning
-├── reward_function.py     # Format checking reward
-├── rl_trainer.py          # Step 2: RL training
-├── model.py               # RL-trained GPT-2 wrapper
-├── main.py                # FastAPI application
-├── models/                # Saved checkpoints
-│   ├── gpt2_squad_finetuned/    # After Step 1
-│   └── rl_trained_gpt2/         # After Step 2
-└── tests/                 # Unit tests
+├── README.md                  # This file
+├── requirements.txt           # Python dependencies
+├── Dockerfile                 # Docker container build
+├── docker-compose.yml         # Docker compose configuration
+├── .gitignore                 # Git ignore rules
+├── finetune_squad.py          # Step 1: SQuAD fine-tuning
+├── reward_function.py         # Format checking reward function
+├── rl_trainer.py              # Step 2: RL training
+├── model.py                   # RLTrainedGPT2 wrapper class
+├── main.py                    # FastAPI application
+└── models/
+    ├── README.md              # Instructions to regenerate models
+    ├── gpt2_squad_finetuned/  # After Step 1 (not in repo, ~950MB)
+    └── rl_trained_gpt2/       # After Step 2 (not in repo, ~475MB)
 ```
+
+## Key Features
+
+- ✅ **Two-step training**: SQuAD fine-tuning + RL post-training
+- ✅ **Format compliance**: Enforced through RL reward function
+- ✅ **GPU acceleration**: Supports CUDA and MPS (Apple Silicon)
+- ✅ **FastAPI integration**: RESTful API with auto-documentation
+- ✅ **Docker deployment**: Containerized for easy deployment
+- ✅ **Modular design**: Separate components for each training step
+
+## Notes
+
+- **Model files** are excluded from the repository due to size (4.6GB total)
+- See `models/README.md` for instructions to regenerate models locally
+- Training was tested on Apple Silicon (M-series) with MPS acceleration
+- For best results, use GPU/MPS acceleration for faster training
+
+## Assignment Requirements Met
+
+1. ✅ Fine-tuning on SQuAD dataset (Step 1)
+2. ✅ RL post-training with policy gradient (Step 2)
+3. ✅ Reward function for format compliance
+4. ✅ FastAPI integration for inference
+5. ✅ Docker deployment configuration
+6. ✅ Complete documentation
+
+## License
+
+MIT License - Educational project for UW Applied GenAI course.
