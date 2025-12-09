@@ -34,9 +34,18 @@ class RLTrainer:
             model_name: HuggingFace model name or path
             base_model_path: Optional path to fine-tuned base model
             learning_rate: Learning rate for RL training
-            device: Device to use (cuda/cpu)
+            device: Device to use (cuda/mps/cpu)
         """
-        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+        # Auto-detect best device: MPS (Apple Silicon) > CUDA (NVIDIA) > CPU
+        if device:
+            self.device = device
+        elif torch.backends.mps.is_available():
+            self.device = 'mps'
+        elif torch.cuda.is_available():
+            self.device = 'cuda'
+        else:
+            self.device = 'cpu'
+        
         print(f"🚀 Initializing RL Trainer on {self.device}")
         
         # Load model and tokenizer
@@ -94,30 +103,30 @@ class RLTrainer:
         token_ids = input_ids[0].tolist()
         
         # Generate tokens one by one (to track log_probs)
-        with torch.no_grad():
-            for _ in range(max_length):
-                # Get model output
-                outputs = self.model(input_ids=input_ids)
-                logits = outputs.logits[:, -1, :]  # Last token logits
-                
-                # Apply temperature
-                logits = logits / temperature
-                
-                # Sample next token
-                probs = torch.softmax(logits, dim=-1)
-                next_token = torch.multinomial(probs, num_samples=1)
-                
-                # Store log probability for this action
-                log_prob = torch.log(probs[0, next_token.item()])
-                log_probs.append(log_prob)
-                
-                # Append to sequence
-                token_ids.append(next_token.item())
-                input_ids = torch.cat([input_ids, next_token.unsqueeze(0)], dim=1)
-                
-                # Stop at EOS token
-                if next_token.item() == self.tokenizer.eos_token_id:
-                    break
+        # NO torch.no_grad() here - we need gradients for RL!
+        for _ in range(max_length):
+            # Get model output
+            outputs = self.model(input_ids=input_ids)
+            logits = outputs.logits[:, -1, :]  # Last token logits
+            
+            # Apply temperature
+            logits = logits / temperature
+            
+            # Sample next token
+            probs = torch.softmax(logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+            
+            # Store log probability for this action (requires_grad=True)
+            log_prob = torch.log(probs[0, next_token.item()])
+            log_probs.append(log_prob)
+            
+            # Append to sequence (detach to prevent graph from growing)
+            token_ids.append(next_token.item())
+            input_ids = torch.cat([input_ids, next_token.detach()], dim=1)
+            
+            # Stop at EOS token
+            if next_token.item() == self.tokenizer.eos_token_id:
+                break
         
         # Decode generated text
         generated_text = self.tokenizer.decode(token_ids, skip_special_tokens=True)
@@ -322,9 +331,14 @@ if __name__ == "__main__":
     
     # Initialize trainer
     # Use SQuAD fine-tuned model as base (run finetune_squad.py first)
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(script_dir, "models", "gpt2_squad_finetuned")
+    save_path = os.path.join(script_dir, "models", "rl_trained_gpt2")
+    
     trainer = RLTrainer(
         model_name="openai-community/gpt2",
-        base_model_path="./models/gpt2_squad_finetuned",  # SQuAD fine-tuned model
+        base_model_path=model_path,
         learning_rate=1e-5
     )
     
@@ -335,11 +349,11 @@ if __name__ == "__main__":
     # Train
     trainer.train(
         questions=training_questions,
-        num_epochs=50,
-        batch_size=5,
+        num_epochs=10,  # Reduced from 50 for faster testing
+        batch_size=3,   # Reduced from 5 for faster testing
         shaped=True,
-        max_length=80,
-        save_path="./models/rl_trained_gpt2"
+        max_length=60,  # Reduced from 80 for faster generation
+        save_path=save_path
     )
     
     # Test after training

@@ -60,3 +60,9 @@ data/
 *.csv
 *.json
 !config.json
+
+# Large trained models (regenerate using scripts)
+models/gpt2_squad_finetuned/
+models/rl_trained_gpt2/
+models/*.safetensors
+models/*.bin

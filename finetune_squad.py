@@ -143,7 +143,7 @@ def fine_tune_on_squad(
         logging_steps=100,
         eval_steps=500,
         save_steps=500,
-        evaluation_strategy="steps",
+        eval_strategy="steps",  # Changed from evaluation_strategy
         save_total_limit=2,
         load_best_model_at_end=True,
         warmup_steps=100,
